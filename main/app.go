@@ -2,14 +2,18 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 
 	"github.com/ant0ine/go-json-rest/rest"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 type App struct {
 	router rest.App
 	Config
+	DB *sqlx.DB
 }
 
 type Config struct {
@@ -34,6 +38,13 @@ func NewApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s", app.Database.User, app.Database.Password, app.Database.Host, app.Database.Name))
+	if err != nil {
+		return nil, err
+	}
+
+	app.DB = db
 
 	app.router = router
 	return &app, nil

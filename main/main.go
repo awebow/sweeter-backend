@@ -18,6 +18,6 @@ func main() {
 	}
 
 	api.SetApp(app)
-	fmt.Printf("Sweeter is starting on port %d\n...", app.Port)
+	fmt.Printf("Sweeter is starting on port %d...\n", app.Port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", app.Port), api.MakeHandler()))
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -17,5 +18,6 @@ func main() {
 	}
 
 	api.SetApp(app)
-	log.Fatal(http.ListenAndServe(":8080", api.MakeHandler()))
+	fmt.Printf("Sweeter is starting on port %d\n...", app.Port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", app.Port), api.MakeHandler()))
 }

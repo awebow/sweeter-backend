@@ -8,6 +8,8 @@ type ApiError int
 
 func (err ApiError) Error() string {
 	switch err {
+	case 400:
+		return "Bad request"
 	case 404:
 		return "Resource not found"
 	case 409:
@@ -20,6 +22,7 @@ func (err ApiError) Error() string {
 const (
 	ResourceNotFound  ApiError = 404
 	ResourceConflicts ApiError = 409
+	BadRequest        ApiError = 400
 )
 
 func ResponseError(w rest.ResponseWriter, err error) {

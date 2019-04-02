@@ -29,7 +29,11 @@ type Config struct {
 func NewApp() (*App, error) {
 	app := App{}
 
-	router, err := rest.MakeRouter()
+	router, err := rest.MakeRouter(
+		rest.Get("/users", app.GetUsers),
+		rest.Get("/users/:no", app.GetUsers),
+		rest.Post("/users", app.PostUsers),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -39,12 +43,12 @@ func NewApp() (*App, error) {
 		return nil, err
 	}
 
-	db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s", app.Database.User, app.Database.Password, app.Database.Host, app.Database.Name))
+	db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/%s?parseTime=true", app.Database.User, app.Database.Password, app.Database.Host, app.Database.Name))
 	if err != nil {
 		return nil, err
 	}
 
-	app.DB = db
+	app.DB = db.Unsafe()
 
 	app.router = router
 	return &app, nil

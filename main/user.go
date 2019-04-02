@@ -9,6 +9,8 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	"github.com/ant0ine/go-json-rest/rest"
+	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/sha3"
 )
 
 type User struct {
@@ -49,15 +51,33 @@ func (app *App) GetUsersId(w rest.ResponseWriter, r *rest.Request) {
 	w.WriteJson(user)
 }
 
+func (app *App) GetUsersMe(w rest.ResponseWriter, r *rest.Request) {
+	claims, err := app.ValidateAuthorization(r)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	user, err := FindUser{No: claims.UserNo}.Query(app)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	w.WriteJson(user)
+}
+
 func (app *App) PostUsers(w rest.ResponseWriter, r *rest.Request) {
 	body := struct {
 		ID       string `json:"id" db:"id"`
-		Passwrod string `json:"password" db:"password"`
+		Password string `json:"password" db:"password"`
 		Name     string `json:"name" db:"name"`
 	}{}
 	r.DecodeJsonPayload(&body)
 
-	res, err := app.DB.NamedExec("INSERT INTO users (`id`, `password`, `name`) VALUES (:id, :password, :name)", body)
+	passwordHash := sha3.Sum256([]byte(body.Password))
+
+	res, err := app.DB.Exec("INSERT INTO users (`id`, `password`, `name`) VALUES (?, ?, ?)", body.ID, passwordHash[:], body.Name)
 	if err != nil {
 		if v, ok := err.(*mysql.MySQLError); ok {
 			if v.Number == 1062 {
@@ -119,4 +139,68 @@ func (find FindUser) Query(app *App) (User, error) {
 	} else {
 		return user, ResourceNotFound
 	}
+}
+
+type AuthenticationClaims struct {
+	UserNo uint64 `json:"user_no"`
+	jwt.StandardClaims
+}
+
+func (app *App) PostTokens(w rest.ResponseWriter, r *rest.Request) {
+	body := struct {
+		ID       string `json:"id"`
+		Password string `json:"password"`
+	}{}
+
+	r.DecodeJsonPayload(&body)
+
+	passwordHash := sha3.Sum256([]byte(body.Password))
+
+	rows, err := app.DB.Query("SELECT `no` FROM users WHERE `id`=? AND `password`=?", body.ID, passwordHash[:])
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	if !rows.Next() {
+		ResponseError(w, ResourceNotFound)
+		return
+	}
+
+	claims := AuthenticationClaims{}
+	rows.Scan(&claims.UserNo)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(app.SigningKey))
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	w.WriteJson(map[string]interface{}{
+		"authorization": tokenString,
+	})
+}
+
+func (app *App) ValidateToken(tokenString string) (*AuthenticationClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &AuthenticationClaims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(app.SigningKey), nil
+	})
+
+	if err != nil {
+		return nil, Unauthorized
+	}
+
+	if claims, ok := token.Claims.(*AuthenticationClaims); ok && token.Valid {
+		return claims, nil
+	} else {
+		return nil, Unauthorized
+	}
+}
+
+func (app *App) ValidateAuthorization(r *rest.Request) (*AuthenticationClaims, error) {
+	if auth, ok := r.Header["Authorization"]; ok && len(auth) > 0 && len(auth[0]) > 6 {
+		return app.ValidateToken(auth[0][7:])
+	}
+
+	return nil, Unauthorized
 }

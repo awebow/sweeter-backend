@@ -17,8 +17,9 @@ type App struct {
 }
 
 type Config struct {
-	Port     int `json:"port"`
-	Database struct {
+	Port       int    `json:"port"`
+	SigningKey string `json:"signing_key"`
+	Database   struct {
 		Host     string `json:"host"`
 		Name     string `json:"name"`
 		User     string `json:"user"`
@@ -31,8 +32,10 @@ func NewApp() (*App, error) {
 
 	router, err := rest.MakeRouter(
 		rest.Get("/users", app.GetUsers),
+		rest.Get("/users/me", app.GetUsersMe),
 		rest.Get("/users/:no", app.GetUsers),
 		rest.Post("/users", app.PostUsers),
+		rest.Post("/users/tokens", app.PostTokens),
 	)
 	if err != nil {
 		return nil, err

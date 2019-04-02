@@ -20,6 +20,7 @@ func (err ApiError) Error() string {
 }
 
 const (
+	Unauthorized      ApiError = 401
 	ResourceNotFound  ApiError = 404
 	ResourceConflicts ApiError = 409
 	BadRequest        ApiError = 400

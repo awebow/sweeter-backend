@@ -9,25 +9,25 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type Tweet struct {
+type Sweet struct {
 	No       uint64     `json:"no" db:"no"`
 	Author   uint64     `json:"author" db:"author"`
 	Content  string     `json:"content" db:"content"`
-	TweetAt  time.Time  `json:"tweet_at" db:"tweet_at"`
+	SweetAt  time.Time  `json:"sweet_at" db:"sweet_at"`
 	DeleteAt *time.Time `json:"delete_at" db:"delete_at"`
 }
 
-func (app *App) GetTweets(w rest.ResponseWriter, r *rest.Request) {
-	tweet, err := FindTweet{No: r.PathParam("no")}.Query(app)
+func (app *App) GetSweets(w rest.ResponseWriter, r *rest.Request) {
+	sweet, err := FindSweet{No: r.PathParam("no")}.Query(app)
 	if err != nil {
 		ResponseError(w, err)
 		return
 	}
 
-	w.WriteJson(tweet)
+	w.WriteJson(sweet)
 }
 
-func (app *App) PostTweets(w rest.ResponseWriter, r *rest.Request) {
+func (app *App) PostSweets(w rest.ResponseWriter, r *rest.Request) {
 	claims, err := app.ValidateAuthorization(r)
 	if err != nil {
 		ResponseError(w, err)
@@ -37,7 +37,7 @@ func (app *App) PostTweets(w rest.ResponseWriter, r *rest.Request) {
 	body := map[string]interface{}{}
 	r.DecodeJsonPayload(&body)
 
-	res, err := app.DB.Exec("INSERT INTO tweets (author, content) VALUES (?, ?)", claims.UserNo, body["content"])
+	res, err := app.DB.Exec("INSERT INTO sweets (author, content) VALUES (?, ?)", claims.UserNo, body["content"])
 	if err != nil {
 		if v, ok := err.(*mysql.MySQLError); ok {
 			if v.Number == 1062 {
@@ -55,109 +55,109 @@ func (app *App) PostTweets(w rest.ResponseWriter, r *rest.Request) {
 		return
 	}
 
-	tweet, err := FindTweet{No: no}.Query(app)
+	sweet, err := FindSweet{No: no}.Query(app)
 	if err != nil {
 		ResponseError(w, err)
 		return
 	}
 
-	w.WriteJson(tweet)
+	w.WriteJson(sweet)
 }
 
-func (app *App) GetUsersTweets(w rest.ResponseWriter, r *rest.Request) {
+func (app *App) GetUsersSweets(w rest.ResponseWriter, r *rest.Request) {
 	user, err := FindUser{No: r.PathParam("no")}.Query(app)
 	if err != nil {
 		ResponseError(w, err)
 		return
 	}
 
-	tweets, err := FindTweets{Author: user.No}.Query(app)
+	sweets, err := FindSweets{Author: user.No}.Query(app)
 	if err != nil {
 		ResponseError(w, err)
 		return
 	}
 
-	w.WriteJson(tweets)
+	w.WriteJson(sweets)
 }
 
-func (app *App) GetUsersMeTweets(w rest.ResponseWriter, r *rest.Request) {
+func (app *App) GetUsersMeSweets(w rest.ResponseWriter, r *rest.Request) {
 	claims, err := app.ValidateAuthorization(r)
 	if err != nil {
 		ResponseError(w, err)
 		return
 	}
 
-	tweets, err := FindTweets{Author: claims.UserNo}.Query(app)
+	sweets, err := FindSweets{Author: claims.UserNo}.Query(app)
 	if err != nil {
 		ResponseError(w, err)
 		return
 	}
 
-	w.WriteJson(tweets)
+	w.WriteJson(sweets)
 }
 
-type FindTweet struct {
+type FindSweet struct {
 	No      interface{}
 	Queryer sqlx.Queryer
 }
 
-func (find FindTweet) Query(app *App) (Tweet, error) {
+func (find FindSweet) Query(app *App) (Sweet, error) {
 	if find.Queryer == nil {
 		find.Queryer = app.DB
 	}
 
-	tweet := Tweet{}
+	sweet := Sweet{}
 
 	var rows *sqlx.Rows
 	var err error
 	if find.No != nil {
-		rows, err = find.Queryer.Queryx("SELECT * FROM tweets WHERE `no`=?", find.No)
+		rows, err = find.Queryer.Queryx("SELECT * FROM sweets WHERE `no`=?", find.No)
 		if err != nil {
-			return tweet, err
+			return sweet, err
 		}
 	} else {
-		return tweet, errors.New("Invalid parameters error")
+		return sweet, errors.New("Invalid parameters error")
 	}
 
 	if rows.Next() {
-		err = rows.StructScan(&tweet)
-		return tweet, err
+		err = rows.StructScan(&sweet)
+		return sweet, err
 	} else {
-		return tweet, ResourceNotFound
+		return sweet, ResourceNotFound
 	}
 }
 
-type FindTweets struct {
+type FindSweets struct {
 	Author  interface{}
 	Queryer sqlx.Queryer
 }
 
-func (find FindTweets) Query(app *App) ([]Tweet, error) {
+func (find FindSweets) Query(app *App) ([]Sweet, error) {
 	if find.Queryer == nil {
 		find.Queryer = app.DB
 	}
 
-	tweets := []Tweet{}
+	sweets := []Sweet{}
 
 	var rows *sqlx.Rows
 	var err error
 	if find.Author != nil {
-		rows, err = find.Queryer.Queryx("SELECT * FROM tweets WHERE `author`=?", find.Author)
+		rows, err = find.Queryer.Queryx("SELECT * FROM sweets WHERE `author`=?", find.Author)
 		if err != nil {
-			return tweets, err
+			return sweets, err
 		}
 	} else {
-		return tweets, errors.New("Invalid parameters error")
+		return sweets, errors.New("Invalid parameters error")
 	}
 
 	for rows.Next() {
-		tweet := Tweet{}
-		err = rows.StructScan(&tweet)
+		sweet := Sweet{}
+		err = rows.StructScan(&sweet)
 		if err != nil {
 			return nil, err
 		}
-		tweets = append(tweets, tweet)
+		sweets = append(sweets, sweet)
 	}
 
-	return tweets, nil
+	return sweets, nil
 }

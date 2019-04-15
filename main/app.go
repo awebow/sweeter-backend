@@ -33,14 +33,14 @@ func NewApp() (*App, error) {
 	router, err := rest.MakeRouter(
 		rest.Get("/users", app.GetUsers),
 		rest.Get("/users/me", app.GetUsersMe),
-		rest.Get("/users/me/tweets", app.GetUsersMeTweets),
+		rest.Get("/users/me/sweets", app.GetUsersMeSweets),
 		rest.Get("/users/:no", app.GetUsers),
-		rest.Get("/users/:no/tweets", app.GetUsersTweets),
+		rest.Get("/users/:no/sweets", app.GetUsersSweets),
 		rest.Post("/users", app.PostUsers),
 		rest.Post("/users/tokens", app.PostTokens),
 
-		rest.Get("/tweets/:no", app.GetTweets),
-		rest.Post("/tweets", app.PostTweets),
+		rest.Get("/sweets/:no", app.GetSweets),
+		rest.Post("/sweets", app.PostSweets),
 	)
 	if err != nil {
 		return nil, err

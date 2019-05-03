@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	"io"
+	"os"
 	"strconv"
 	"time"
 
@@ -18,6 +20,7 @@ type User struct {
 	No         uint64     `json:"no" db:"no"`
 	ID         string     `json:"id" db:"id"`
 	Name       string     `json:"name" db:"name"`
+	Picture    *string    `json:"picture" db:"picture"`
 	RegisterAt time.Time  `json:"register_at" db:"register_at"`
 	WithdrawAt *time.Time `json:"withdraw_at" db:"withdraw_at"`
 }
@@ -252,6 +255,46 @@ func (app *App) GetUsersRelations(w rest.ResponseWriter, r *rest.Request) {
 	w.WriteJson(map[string]interface{}{
 		"relation": relation,
 	})
+}
+
+func (app *App) PutUsersMePicture(w rest.ResponseWriter, r *rest.Request) {
+	claims, err := app.ValidateAuthorization(r)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	contentType := r.Header["Content-Type"][0]
+
+	now := strconv.FormatInt(time.Now().Unix(), 36)
+	no := strconv.FormatUint(claims.UserNo, 36)
+	ext := ""
+	switch contentType {
+	case "image/jpg":
+		fallthrough
+	case "image/jpeg":
+		ext = ".jpg"
+	case "image/png":
+		ext = ".png"
+	}
+
+	fileName := now + "_" + no + ext
+	file, err := os.Create("statics/" + fileName)
+	defer file.Close()
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	_, err = io.Copy(file, r.Body)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	app.DB.Queryx("UPDATE users SET picture=? WHERE `no`=?", fileName, claims.UserNo)
+	user, _ := FindUser{No: claims.UserNo}.Query(app)
+	w.WriteJson(user)
 }
 
 type FindUser struct {

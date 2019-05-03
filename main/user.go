@@ -235,6 +235,7 @@ func (app *App) GetUsersRelations(w rest.ResponseWriter, r *rest.Request) {
 		return
 	}
 	following = rows.Next()
+	rows.Close()
 
 	rows, err = app.DB.Queryx("SELECT 1 FROM followings WHERE `user`=? AND `target`=?", no, claims.UserNo)
 	if err != nil {
@@ -242,6 +243,7 @@ func (app *App) GetUsersRelations(w rest.ResponseWriter, r *rest.Request) {
 		return
 	}
 	followed = rows.Next()
+	rows.Close()
 
 	relation := "none"
 	if following && followed {
@@ -292,7 +294,7 @@ func (app *App) PutUsersMePicture(w rest.ResponseWriter, r *rest.Request) {
 		return
 	}
 
-	app.DB.Queryx("UPDATE users SET picture=? WHERE `no`=?", fileName, claims.UserNo)
+	app.DB.Exec("UPDATE users SET picture=? WHERE `no`=?", fileName, claims.UserNo)
 	user, _ := FindUser{No: claims.UserNo}.Query(app)
 	w.WriteJson(user)
 }
@@ -328,6 +330,7 @@ func (find FindUser) Query(app *App) (User, error) {
 
 	if rows.Next() {
 		err = rows.StructScan(&user)
+		rows.Close()
 		return user, err
 	} else {
 		return user, ResourceNotFound
@@ -376,6 +379,8 @@ func (find FindUsers) Query(app *App) ([]User, error) {
 		users = append(users, user)
 	}
 
+	rows.Close()
+
 	return users, nil
 }
 
@@ -407,6 +412,7 @@ func (app *App) PostTokens(w rest.ResponseWriter, r *rest.Request) {
 
 	claims := AuthenticationClaims{}
 	rows.Scan(&claims.UserNo)
+	rows.Close()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(app.SigningKey))
 	if err != nil {

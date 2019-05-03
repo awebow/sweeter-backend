@@ -18,6 +18,7 @@ func main() {
 	}
 
 	api.SetApp(app)
+	defer app.DB.Close()
 	fmt.Printf("Sweeter is starting on port %d...\n", app.Port)
 	http.Handle("/statics/", http.StripPrefix("/statics", http.FileServer(http.Dir("statics"))))
 	http.Handle("/", api.MakeHandler())

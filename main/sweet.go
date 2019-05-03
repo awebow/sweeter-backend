@@ -116,6 +116,8 @@ func (app *App) GetUsersMeNewsfeeds(w rest.ResponseWriter, r *rest.Request) {
 		users = append(users, no)
 	}
 
+	rows.Close()
+
 	sweets, err := FindSweets{Authors: users}.Query(app)
 	if err != nil {
 		ResponseError(w, err)
@@ -150,6 +152,7 @@ func (find FindSweet) Query(app *App) (Sweet, error) {
 
 	if rows.Next() {
 		err = rows.StructScan(&sweet)
+		rows.Close()
 		return sweet, err
 	} else {
 		return sweet, ResourceNotFound
@@ -199,6 +202,8 @@ func (find FindSweets) Query(app *App) ([]Sweet, error) {
 		}
 		sweets = append(sweets, sweet)
 	}
+
+	rows.Close()
 
 	return sweets, nil
 }

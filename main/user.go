@@ -114,6 +114,81 @@ func (app *App) PostUsers(w rest.ResponseWriter, r *rest.Request) {
 	w.WriteJson(user)
 }
 
+func (app *App) GetUsersFollowings(w rest.ResponseWriter, r *rest.Request) {
+	find := FindUsers{FollowedBy: r.PathParam("no")}
+	users, err := find.Query(app)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	w.WriteJson(users)
+}
+
+func (app *App) GetUsersFollowers(w rest.ResponseWriter, r *rest.Request) {
+	find := FindUsers{Following: r.PathParam("no")}
+	users, err := find.Query(app)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	w.WriteJson(users)
+}
+
+func (app *App) GetUsersMeFollowings(w rest.ResponseWriter, r *rest.Request) {
+	claims, err := app.ValidateAuthorization(r)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	find := FindUsers{FollowedBy: claims.UserNo}
+	users, err := find.Query(app)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	w.WriteJson(users)
+}
+
+func (app *App) GetUsersMeFollowers(w rest.ResponseWriter, r *rest.Request) {
+	claims, err := app.ValidateAuthorization(r)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	find := FindUsers{Following: claims.UserNo}
+	users, err := find.Query(app)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	w.WriteJson(users)
+}
+
+func (app *App) PostUsersMeFollowings(w rest.ResponseWriter, r *rest.Request) {
+	claims, err := app.ValidateAuthorization(r)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	no := r.PathParam("no")
+	_, err = app.DB.Exec("INSERT INTO followings (`user`, `target`) VALUES (?, ?)", claims.UserNo, no)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	w.WriteJson(map[string]interface{}{
+		"message": "success",
+	})
+}
+
 type FindUser struct {
 	No      interface{}
 	ID      interface{}
@@ -152,8 +227,10 @@ func (find FindUser) Query(app *App) (User, error) {
 }
 
 type FindUsers struct {
-	Keyword string
-	Queryer sqlx.Queryer
+	Keyword    string
+	Following  interface{}
+	FollowedBy interface{}
+	Queryer    sqlx.Queryer
 }
 
 func (find FindUsers) Query(app *App) ([]User, error) {
@@ -166,7 +243,18 @@ func (find FindUsers) Query(app *App) ([]User, error) {
 	var rows *sqlx.Rows
 	var err error
 	if len(find.Keyword) > 0 {
-		rows, err = find.Queryer.Queryx("SELECT * FROM users WHERE `id` LIKE ? OR `name` LIKE ?", find.Keyword+"%", find.Keyword+"%")
+		rows, err = find.Queryer.Queryx("SELECT * FROM users WHERE `id` LIKE ? OR `name` LIKE ?",
+			find.Keyword+"%", find.Keyword+"%")
+		if err != nil {
+			return users, err
+		}
+	} else if find.Following != nil {
+		rows, err = find.Queryer.Queryx("SELECT u.* FROM users u JOIN followings f ON u.`no`=f.`user` WHERE f.`target`=?", find.Following)
+		if err != nil {
+			return users, err
+		}
+	} else if find.FollowedBy != nil {
+		rows, err = find.Queryer.Queryx("SELECT u.* FROM users u JOIN followings f ON u.`no`=f.`target` WHERE f.`user`=?", find.FollowedBy)
 		if err != nil {
 			return users, err
 		}

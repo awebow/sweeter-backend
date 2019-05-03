@@ -96,6 +96,35 @@ func (app *App) GetUsersMeSweets(w rest.ResponseWriter, r *rest.Request) {
 	w.WriteJson(sweets)
 }
 
+func (app *App) GetUsersMeNewsfeeds(w rest.ResponseWriter, r *rest.Request) {
+	claims, err := app.ValidateAuthorization(r)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	users := []interface{}{claims.UserNo}
+	rows, err := app.DB.Queryx("SELECT target FROM followings WHERE `user`=?", claims.UserNo)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	for rows.Next() {
+		var no uint64
+		rows.Scan(&no)
+		users = append(users, no)
+	}
+
+	sweets, err := FindSweets{Authors: users}.Query(app)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	w.WriteJson(sweets)
+}
+
 type FindSweet struct {
 	No      interface{}
 	Queryer sqlx.Queryer
@@ -129,6 +158,7 @@ func (find FindSweet) Query(app *App) (Sweet, error) {
 
 type FindSweets struct {
 	Author  interface{}
+	Authors []interface{}
 	Queryer sqlx.Queryer
 }
 
@@ -143,6 +173,17 @@ func (find FindSweets) Query(app *App) ([]Sweet, error) {
 	var err error
 	if find.Author != nil {
 		rows, err = find.Queryer.Queryx("SELECT * FROM sweets WHERE `author`=?", find.Author)
+		if err != nil {
+			return sweets, err
+		}
+	} else if len(find.Authors) > 0 {
+		query, args, err := sqlx.In("SELECT * FROM sweets WHERE `author` IN (?)", find.Authors)
+		if err != nil {
+			return sweets, err
+		}
+
+		query = app.DB.Rebind(query)
+		rows, err = find.Queryer.Queryx(query, args...)
 		if err != nil {
 			return sweets, err
 		}

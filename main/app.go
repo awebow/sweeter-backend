@@ -64,6 +64,7 @@ func NewApp() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	app.DB = db.Unsafe()
 

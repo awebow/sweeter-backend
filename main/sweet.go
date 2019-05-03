@@ -172,12 +172,12 @@ func (find FindSweets) Query(app *App) ([]Sweet, error) {
 	var rows *sqlx.Rows
 	var err error
 	if find.Author != nil {
-		rows, err = find.Queryer.Queryx("SELECT * FROM sweets WHERE `author`=?", find.Author)
+		rows, err = find.Queryer.Queryx("SELECT * FROM sweets WHERE `author`=? ORDER BY `no` DESC", find.Author)
 		if err != nil {
 			return sweets, err
 		}
 	} else if len(find.Authors) > 0 {
-		query, args, err := sqlx.In("SELECT * FROM sweets WHERE `author` IN (?)", find.Authors)
+		query, args, err := sqlx.In("SELECT * FROM sweets WHERE `author` IN (?) ORDER BY `no` DESC", find.Authors)
 		if err != nil {
 			return sweets, err
 		}

@@ -38,6 +38,8 @@ func NewApp() (*App, error) {
 		rest.Get("/users/me/followings", app.GetUsersMeFollowings),
 		rest.Get("/users/me/followers", app.GetUsersMeFollowers),
 		rest.Post("/users/me/followings/:no", app.PostUsersMeFollowings),
+		rest.Delete("/users/me/followings/:no", app.DeleteUsersMeFollowings),
+		rest.Get("/users/me/relations/:no", app.GetUsersRelations),
 		rest.Get("/users/:no", app.GetUsers),
 		rest.Get("/users/:no/sweets", app.GetUsersSweets),
 		rest.Get("/users/:no/followings", app.GetUsersFollowings),

@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"github.com/go-sql-driver/mysql"
@@ -186,6 +187,70 @@ func (app *App) PostUsersMeFollowings(w rest.ResponseWriter, r *rest.Request) {
 
 	w.WriteJson(map[string]interface{}{
 		"message": "success",
+	})
+}
+
+func (app *App) DeleteUsersMeFollowings(w rest.ResponseWriter, r *rest.Request) {
+	claims, err := app.ValidateAuthorization(r)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	no := r.PathParam("no")
+	_, err = app.DB.Exec("DELETE FROM followings WHERE `user`=? AND `target`=?", claims.UserNo, no)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	w.WriteJson(map[string]interface{}{
+		"message": "success",
+	})
+}
+
+func (app *App) GetUsersRelations(w rest.ResponseWriter, r *rest.Request) {
+	claims, err := app.ValidateAuthorization(r)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+
+	no, _ := strconv.ParseUint(r.PathParam("no"), 10, 64)
+	if claims.UserNo == no {
+		w.WriteJson(map[string]interface{}{
+			"relation": "self",
+		})
+		return
+	}
+
+	following := false
+	followed := false
+	rows, err := app.DB.Queryx("SELECT 1 FROM followings WHERE `user`=? AND `target`=?", claims.UserNo, no)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+	following = rows.Next()
+
+	rows, err = app.DB.Queryx("SELECT 1 FROM followings WHERE `user`=? AND `target`=?", no, claims.UserNo)
+	if err != nil {
+		ResponseError(w, err)
+		return
+	}
+	followed = rows.Next()
+
+	relation := "none"
+	if following && followed {
+		relation = "both"
+	} else if following {
+		relation = "following"
+	} else if followed {
+		relation = "followed"
+	}
+
+	w.WriteJson(map[string]interface{}{
+		"relation": relation,
 	})
 }
 

@@ -27,6 +27,16 @@ func (app *App) GetUsers(w rest.ResponseWriter, r *rest.Request) {
 		find.No = no
 	} else if id := r.URL.Query()["id"]; len(id) > 0 {
 		find.ID = id[0]
+	} else if keyword := r.URL.Query()["keyword"]; len(keyword) > 0 {
+		search := FindUsers{Keyword: keyword[0]}
+		users, err := search.Query(app)
+		if err != nil {
+			ResponseError(w, err)
+			return
+		}
+
+		w.WriteJson(users)
+		return
 	} else {
 		ResponseError(w, BadRequest)
 		return
@@ -139,6 +149,38 @@ func (find FindUser) Query(app *App) (User, error) {
 	} else {
 		return user, ResourceNotFound
 	}
+}
+
+type FindUsers struct {
+	Keyword string
+	Queryer sqlx.Queryer
+}
+
+func (find FindUsers) Query(app *App) ([]User, error) {
+	if find.Queryer == nil {
+		find.Queryer = app.DB
+	}
+
+	users := []User{}
+
+	var rows *sqlx.Rows
+	var err error
+	if len(find.Keyword) > 0 {
+		rows, err = find.Queryer.Queryx("SELECT * FROM users WHERE `id` LIKE ? OR `name` LIKE ?", find.Keyword+"%", find.Keyword+"%")
+		if err != nil {
+			return users, err
+		}
+	} else {
+		return users, errors.New("Invalid parameters error")
+	}
+
+	for rows.Next() {
+		user := User{}
+		rows.StructScan(&user)
+		users = append(users, user)
+	}
+
+	return users, nil
 }
 
 type AuthenticationClaims struct {
